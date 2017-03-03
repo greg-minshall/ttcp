@@ -49,6 +49,7 @@ static char RCSid[] = "ttcp.c $Revision: 1.12 $";
 #include <signal.h>
 #include <ctype.h>
 #include <errno.h>
+#include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -131,6 +132,8 @@ Options specific to -t:\n\
 Options specific to -r:\n\
 	-B	for -s, only output full blocks as specified by -l (for TAR)\n\
 	-T	\"touch\": access each byte as it's read\n\
+    -C  for -r, act as the client (session initiator)\n\
+    -S  for -t, act as the server (listen)\n\
 ";	
 
 char stats[128];
@@ -159,6 +162,7 @@ main(int argc, char *argv[])
 {
 	unsigned long addr_tmp;
 	int c;
+    int one = 1;
 
 	if (argc < 2) goto usage;
 
@@ -300,6 +304,11 @@ main(int argc, char *argv[])
 	if ((fd = socket(AF_INET, udp?SOCK_DGRAM:SOCK_STREAM, 0)) < 0)
 		err("socket");
 	mes("socket");
+
+    /* get rid of "bind: Address already in use" error */
+    if (setsockopt(fd, 0, SO_REUSEADDR, (void *)&one, sizeof one) == -1) {
+        err("setsockopt: SO_REUSEADDR");
+    }
 
 	if (bind(fd, (struct sockaddr *)&sinme, sizeof(sinme)) < 0)
 		err("bind");
