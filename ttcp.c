@@ -162,7 +162,6 @@ main(int argc, char *argv[])
 {
 	unsigned long addr_tmp;
 	int c;
-    int one = 1;
 
 	if (argc < 2) goto usage;
 
@@ -239,7 +238,7 @@ main(int argc, char *argv[])
 		}
 	}
 	if((trans && !S_flag) || C_flag)  {      /* if we're to initiate the connection */
-		/* xmitr */
+		/* client/initiator */
 		if (optind == argc)
 			goto usage;
 		bzero((char *)&sinhim, sizeof(sinhim));
@@ -267,7 +266,7 @@ main(int argc, char *argv[])
 		sinhim.sin_port = htons(port);
 		sinme.sin_port = 0;		/* free choice */
 	} else {
-		/* rcvr */
+		/* server/listener */
 		sinme.sin_port =  htons(port);
 	}
 
@@ -306,7 +305,7 @@ main(int argc, char *argv[])
 	mes("socket");
 
     /* get rid of "bind: Address already in use" error */
-    if (setsockopt(fd, 0, SO_REUSEADDR, (void *)&one, sizeof one) == -1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *)&one, sizeof one) == -1) {
         err("setsockopt: SO_REUSEADDR");
     }
 
@@ -373,9 +372,11 @@ main(int argc, char *argv[])
             }
             fromlen = sizeof(frominet);
             domain = AF_INET;
-            if((fd=accept(fd, (struct sockaddr *)&frominet, &fromlen) ) < 0)
+            if((fd=accept(fd, (struct sockaddr *)&frominet, &fromlen) ) < 0) {
                 err("accept");
-            { struct sockaddr_in peer;
+            }
+            {
+                struct sockaddr_in peer;
                 int peerlen = sizeof(peer);
                 if (getpeername(fd, (struct sockaddr *) &peer, &peerlen) < 0) {
                     err("getpeername");
