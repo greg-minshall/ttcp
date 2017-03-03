@@ -45,6 +45,7 @@ static char RCSid[] = "ttcp.c $Revision: 1.12 $";
 /* #define SYSV */	/* required on SGI IRIX releases before 3.3 */
 
 #include <stdio.h>
+#include <stdint.h>
 #include <signal.h>
 #include <ctype.h>
 #include <errno.h>
@@ -266,7 +267,7 @@ main(int argc, char *argv[])
 	if ( (buf = (char *)malloc(buflen+bufalign)) == (char *)NULL)
 		err("malloc");
 	if (bufalign != 0)
-		buf +=(bufalign - ((int)buf % bufalign) + bufoffset) % bufalign;
+		buf +=(bufalign - ((intptr_t)buf % bufalign) + bufoffset) % bufalign;
 
 	if (trans) {
 	    fprintf(stdout,
