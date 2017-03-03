@@ -1,0 +1,9 @@
+this is the classic ttcp(1), with a few mods:
+
+1.  clean up some warnings (works on my ubuntu box).
+
+2.  add -C (for -r) and -S (for -t) to reverse which of the
+   receiver (transmitter) initiates (listens for) a connection.
+
+3.  get rid of annoying "address already in use" error (via
+   SO_REUSEADDR).
