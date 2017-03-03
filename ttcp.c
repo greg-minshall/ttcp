@@ -48,13 +48,17 @@ static char RCSid[] = "ttcp.c $Revision: 1.12 $";
 #include <signal.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <sys/time.h>		/* struct timeval */
 #include <sys/types.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/time.h>		/* struct timeval */
 
 #if defined(SYSV)
 #include <sys/times.h>
@@ -133,7 +137,7 @@ double cput, realt;		/* user, real time (seconds) */
 
 void err();
 void mes();
-int pattern();
+void pattern();
 void prep_timer();
 double read_timer();
 int Nread();
@@ -147,9 +151,8 @@ sigpipe()
 {
 }
 
-main(argc,argv)
-int argc;
-char **argv;
+int
+main(int argc, char *argv[])
 {
 	unsigned long addr_tmp;
 	int c;
@@ -285,7 +288,7 @@ char **argv;
 		err("socket");
 	mes("socket");
 
-	if (bind(fd, &sinme, sizeof(sinme)) < 0)
+	if (bind(fd, (struct sockaddr *)&sinme, sizeof(sinme)) < 0)
 		err("bind");
 
 #if defined(SO_SNDBUF) || defined(SO_RCVBUF)
@@ -326,7 +329,7 @@ char **argv;
 			mes("nodelay");
 		}
 #endif
-		if(connect(fd, &sinhim, sizeof(sinhim) ) < 0)
+		if(connect(fd, (struct sockaddr *)&sinhim, sizeof(sinhim) ) < 0)
 			err("connect");
 		mes("connect");
 	    } else {
@@ -348,12 +351,11 @@ char **argv;
 		}
 		fromlen = sizeof(frominet);
 		domain = AF_INET;
-		if((fd=accept(fd, &frominet, &fromlen) ) < 0)
+		if((fd=accept(fd, (struct sockaddr *)&frominet, &fromlen) ) < 0)
 			err("accept");
 		{ struct sockaddr_in peer;
 		  int peerlen = sizeof(peer);
-		  if (getpeername(fd, (struct sockaddr_in *) &peer, 
-				&peerlen) < 0) {
+		  if (getpeername(fd, (struct sockaddr *) &peer, &peerlen) < 0) {
 			err("getpeername");
 		  }
 		  fprintf(stderr,"ttcp-r: accept from %s\n", 
@@ -423,7 +425,7 @@ char **argv;
 		nbytes, cput, outfmt(nbytes/cput));
 	}
 	fprintf(stdout,
-		"ttcp%s: %d I/O calls, msec/call = %.2f, calls/sec = %.2f\n",
+		"ttcp%s: %ld I/O calls, msec/call = %.2f, calls/sec = %.2f\n",
 		trans?"-t":"-r",
 		numCalls,
 		1024.0 * realt/((double)numCalls),
@@ -431,14 +433,14 @@ char **argv;
 	fprintf(stdout,"ttcp%s: %s\n", trans?"-t":"-r", stats);
 	if (verbose) {
 	    fprintf(stdout,
-		"ttcp%s: buffer address %#x\n",
+		"ttcp%s: buffer address %p\n",
 		trans?"-t":"-r",
 		buf);
 	}
 	exit(0);
 
 usage:
-	fprintf(stderr,Usage);
+	fprintf(stderr,"%s", Usage);
 	exit(1);
 }
 
@@ -459,6 +461,7 @@ char *s;
 	fprintf(stderr,"ttcp%s: %s\n", trans?"-t":"-r", s);
 }
 
+void
 pattern( cp, cnt )
 register char *cp;
 register int cnt;
@@ -552,8 +555,7 @@ prep_timer()
  * 
  */
 double
-read_timer(str,len)
-char *str;
+read_timer(char *str, int len)
 {
 	struct timeval timedol;
 	struct rusage ru1;
@@ -614,13 +616,13 @@ prusage(r0, r1, e, b, outp)
 
 		case 'U':
 			tvsub(&tdiff, &r1->ru_utime, &r0->ru_utime);
-			sprintf(outp,"%d.%01d", tdiff.tv_sec, tdiff.tv_usec/100000);
+			sprintf(outp,"%ld.%01ld", tdiff.tv_sec, tdiff.tv_usec/100000);
 			END(outp);
 			break;
 
 		case 'S':
 			tvsub(&tdiff, &r1->ru_stime, &r0->ru_stime);
-			sprintf(outp,"%d.%01d", tdiff.tv_sec, tdiff.tv_usec/100000);
+			sprintf(outp,"%ld.%01ld", tdiff.tv_sec, tdiff.tv_usec/100000);
 			END(outp);
 			break;
 
@@ -642,49 +644,49 @@ prusage(r0, r1, e, b, outp)
 			break;
 
 		case 'X':
-			sprintf(outp,"%d", t == 0 ? 0 : (r1->ru_ixrss-r0->ru_ixrss)/t);
+			sprintf(outp,"%ld", t == 0 ? 0 : (r1->ru_ixrss-r0->ru_ixrss)/t);
 			END(outp);
 			break;
 
 		case 'D':
-			sprintf(outp,"%d", t == 0 ? 0 :
+			sprintf(outp,"%ld", t == 0 ? 0 :
 			    (r1->ru_idrss+r1->ru_isrss-(r0->ru_idrss+r0->ru_isrss))/t);
 			END(outp);
 			break;
 
 		case 'K':
-			sprintf(outp,"%d", t == 0 ? 0 :
+			sprintf(outp,"%ld", t == 0 ? 0 :
 			    ((r1->ru_ixrss+r1->ru_isrss+r1->ru_idrss) -
 			    (r0->ru_ixrss+r0->ru_idrss+r0->ru_isrss))/t);
 			END(outp);
 			break;
 
 		case 'M':
-			sprintf(outp,"%d", r1->ru_maxrss/2);
+			sprintf(outp,"%ld", r1->ru_maxrss/2);
 			END(outp);
 			break;
 
 		case 'F':
-			sprintf(outp,"%d", r1->ru_majflt-r0->ru_majflt);
+			sprintf(outp,"%ld", r1->ru_majflt-r0->ru_majflt);
 			END(outp);
 			break;
 
 		case 'R':
-			sprintf(outp,"%d", r1->ru_minflt-r0->ru_minflt);
+			sprintf(outp,"%ld", r1->ru_minflt-r0->ru_minflt);
 			END(outp);
 			break;
 
 		case 'I':
-			sprintf(outp,"%d", r1->ru_inblock-r0->ru_inblock);
+			sprintf(outp,"%ld", r1->ru_inblock-r0->ru_inblock);
 			END(outp);
 			break;
 
 		case 'O':
-			sprintf(outp,"%d", r1->ru_oublock-r0->ru_oublock);
+			sprintf(outp,"%ld", r1->ru_oublock-r0->ru_oublock);
 			END(outp);
 			break;
 		case 'C':
-			sprintf(outp,"%d+%d", r1->ru_nvcsw-r0->ru_nvcsw,
+			sprintf(outp,"%ld+%ld", r1->ru_nvcsw-r0->ru_nvcsw,
 				r1->ru_nivcsw-r0->ru_nivcsw );
 			END(outp);
 			break;
@@ -743,16 +745,14 @@ register char *cp;
 /*
  *			N R E A D
  */
-Nread( fd, buf, count )
-int fd;
-void *buf;
-int count;
+int
+Nread(int fd, void *buf, int count )
 {
 	struct sockaddr_in from;
 	int len = sizeof(from);
 	register int cnt;
 	if( udp )  {
-		cnt = recvfrom( fd, buf, count, 0, &from, &len );
+		cnt = recvfrom( fd, buf, count, 0, (struct sockaddr *)&from, &len );
 		numCalls++;
 	} else {
 		if( b_flag )
@@ -774,15 +774,14 @@ int count;
 /*
  *			N W R I T E
  */
-Nwrite( fd, buf, count )
-int fd;
-void *buf;
-int count;
+int
+Nwrite( int fd, void *buf, int count )
 {
 	register int cnt;
 	if( udp )  {
 again:
-		cnt = sendto( fd, buf, count, 0, &sinhim, sizeof(sinhim) );
+		cnt = sendto( fd, buf, count, 0,
+                      (struct sockaddr *)&sinhim, sizeof(sinhim) );
 		numCalls++;
 		if( cnt<0 && errno == ENOBUFS )  {
 			delay(18000);
@@ -797,13 +796,13 @@ again:
 }
 
 void
-delay(us)
+delay(int us)
 {
 	struct timeval tv;
 
 	tv.tv_sec = 0;
 	tv.tv_usec = us;
-	(void)select( 1, (char *)0, (char *)0, (char *)0, &tv );
+	(void)select( 1, (fd_set *)0, (fd_set *)0, (fd_set *)0, &tv );
 }
 
 /*
