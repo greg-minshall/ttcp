@@ -13,6 +13,7 @@ ttcp \- test TCP and UDP performance
 .RB [ \-A\0 \fIalign\fP ]
 .RB [ \-O\0 \fIoffset\fP ]
 .RB [ \-f\0 \fIformat\fP ]
+.RB [ \-S ]
 .RB [ \-D ]
 .RB [ \-v]
 .RB host
@@ -28,6 +29,7 @@ ttcp \- test TCP and UDP performance
 .RB [ \-O\0 \fIoffset\fP ]
 .RB [ \-f\0 \fIformat\fP ]
 .RB [ \-B ]
+.RB [ \-C ]
 .RB [ \-T ]
 .RB [ \-v ]
 .RB [ > out ]
@@ -136,6 +138,14 @@ The default is 'K'.
 .TP 10
 \-v
 Verbose: print more statistics.
+.TP 10
+\-C
+Client: -r mode normally acts as a server (listener).  With this
+option, act as a client (initiator).
+.TP 10
+\-S
+Server: -t mode normally acts as a client (initiator).  With this
+option, act as a server (listener).
 .TP 10
 \-d
 Debug: set the SO_DEBUG socket option.
