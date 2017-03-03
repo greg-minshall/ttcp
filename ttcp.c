@@ -97,6 +97,8 @@ int verbose = 0;		/* 0=print basic info, 1=print cpu rate, proc
 				 * resource usage. */
 int nodelay = 0;		/* set TCP_NODELAY socket option */
 int b_flag = 0;			/* use mread() */
+int C_flag = 0;         /* act as client (session initiator) */
+int S_flag = 0;         /* act as server (session listener) */
 int sockbufsize = 0;		/* socket buffer size to use */
 char fmt = 'K';			/* output format: k = kilobits, K = kilobytes,
 				 *  m = megabits, M = megabytes, 
@@ -160,12 +162,15 @@ main(int argc, char *argv[])
 
 	if (argc < 2) goto usage;
 
-	while ((c = getopt(argc, argv, "drstuvBDTb:f:l:n:p:A:O:")) != -1) {
+	while ((c = getopt(argc, argv, "drstuvBCDSTb:f:l:n:p:A:O:")) != -1) {
 		switch (c) {
 
 		case 'B':
 			b_flag = 1;
 			break;
+        case 'C':
+            C_flag = 1;
+            break;
 		case 't':
 			trans = 1;
 			break;
@@ -195,6 +200,9 @@ main(int argc, char *argv[])
 		case 'p':
 			port = atoi(optarg);
 			break;
+        case 'S':
+            S_flag = 1;
+            break;
 		case 'u':
 			udp = 1;
 			break;
@@ -226,7 +234,7 @@ main(int argc, char *argv[])
 			goto usage;
 		}
 	}
-	if(trans)  {
+	if((trans && !S_flag) || C_flag)  {      /* if we're to initiate the connection */
 		/* xmitr */
 		if (optind == argc)
 			goto usage;
@@ -273,17 +281,21 @@ main(int argc, char *argv[])
 	    fprintf(stdout,
 	    "ttcp-t: buflen=%d, nbuf=%d, align=%d/%d, port=%d",
 		buflen, nbuf, bufalign, bufoffset, port);
- 	    if (sockbufsize)
- 		fprintf(stdout, ", sockbufsize=%d", sockbufsize);
- 	    fprintf(stdout, "  %s  -> %s\n", udp?"udp":"tcp", host);
+ 	    if (sockbufsize) {
+            fprintf(stdout, ", sockbufsize=%d", sockbufsize);
+        }
 	} else {
 	    fprintf(stdout,
  	    "ttcp-r: buflen=%d, nbuf=%d, align=%d/%d, port=%d",
  		buflen, nbuf, bufalign, bufoffset, port);
  	    if (sockbufsize)
  		fprintf(stdout, ", sockbufsize=%d", sockbufsize);
- 	    fprintf(stdout, "  %s\n", udp?"udp":"tcp");
+ 	    fprintf(stdout, "  %s", udp?"udp":"tcp");
 	}
+    if ((trans && !S_flag) || C_flag) {
+        fprintf(stdout, "  %s  -> %s", udp?"udp":"tcp", host);
+    }
+    fprintf(stdout, "\n");
 
 	if ((fd = socket(AF_INET, udp?SOCK_DGRAM:SOCK_STREAM, 0)) < 0)
 		err("socket");
@@ -295,73 +307,73 @@ main(int argc, char *argv[])
 #if defined(SO_SNDBUF) || defined(SO_RCVBUF)
 	if (sockbufsize) {
 	    if (trans) {
-		if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sockbufsize,
-		    sizeof sockbufsize) < 0)
-			err("setsockopt: sndbuf");
-		mes("sndbuf");
+            if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sockbufsize,
+                           sizeof sockbufsize) < 0)
+                err("setsockopt: sndbuf");
+            mes("sndbuf");
 	    } else {
-		if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &sockbufsize,
-		    sizeof sockbufsize) < 0)
-			err("setsockopt: rcvbuf");
-		mes("rcvbuf");
+            if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &sockbufsize,
+                           sizeof sockbufsize) < 0)
+                err("setsockopt: rcvbuf");
+            mes("rcvbuf");
 	    }
 	}
 #endif
 
 	if (!udp)  {
 	    signal(SIGPIPE, sigpipe);
-	    if (trans) {
-		/* We are the client if transmitting */
-		if (options)  {
+	    if ((trans && !S_flag) || C_flag) {
+            /* We are the client */
+            if (options)  {
 #if defined(BSD42)
-			if( setsockopt(fd, SOL_SOCKET, options, 0, 0) < 0)
+                if( setsockopt(fd, SOL_SOCKET, options, 0, 0) < 0)
 #else /* BSD43 */
-			if( setsockopt(fd, SOL_SOCKET, options, &one, sizeof(one)) < 0)
+                    if( setsockopt(fd, SOL_SOCKET, options, &one, sizeof(one)) < 0)
 #endif
-				err("setsockopt");
-		}
+                        err("setsockopt");
+            }
 #ifdef TCP_NODELAY
-		if (nodelay) {
-			struct protoent *p;
-			p = getprotobyname("tcp");
-			if( p && setsockopt(fd, p->p_proto, TCP_NODELAY, 
-			    &one, sizeof(one)) < 0)
-				err("setsockopt: nodelay");
-			mes("nodelay");
-		}
+            if (nodelay) {
+                struct protoent *p;
+                p = getprotobyname("tcp");
+                if( p && setsockopt(fd, p->p_proto, TCP_NODELAY, 
+                                    &one, sizeof(one)) < 0)
+                    err("setsockopt: nodelay");
+                mes("nodelay");
+            }
 #endif
-		if(connect(fd, (struct sockaddr *)&sinhim, sizeof(sinhim) ) < 0)
-			err("connect");
-		mes("connect");
+            if(connect(fd, (struct sockaddr *)&sinhim, sizeof(sinhim) ) < 0)
+                err("connect");
+            mes("connect");
 	    } else {
-		/* otherwise, we are the server and 
+            /* otherwise, we are the server and 
 	         * should listen for the connections
 	         */
 #if defined(ultrix) || defined(sgi)
-		listen(fd,1);   /* workaround for alleged u4.2 bug */
+            listen(fd,1);   /* workaround for alleged u4.2 bug */
 #else
-		listen(fd,0);   /* allow a queue of 0 */
+            listen(fd,0);   /* allow a queue of 0 */
 #endif
-		if(options)  {
+            if(options)  {
 #if defined(BSD42)
-			if( setsockopt(fd, SOL_SOCKET, options, 0, 0) < 0)
+                if( setsockopt(fd, SOL_SOCKET, options, 0, 0) < 0)
 #else /* BSD43 */
-			if( setsockopt(fd, SOL_SOCKET, options, &one, sizeof(one)) < 0)
+                    if( setsockopt(fd, SOL_SOCKET, options, &one, sizeof(one)) < 0)
 #endif
-				err("setsockopt");
-		}
-		fromlen = sizeof(frominet);
-		domain = AF_INET;
-		if((fd=accept(fd, (struct sockaddr *)&frominet, &fromlen) ) < 0)
-			err("accept");
-		{ struct sockaddr_in peer;
-		  int peerlen = sizeof(peer);
-		  if (getpeername(fd, (struct sockaddr *) &peer, &peerlen) < 0) {
-			err("getpeername");
-		  }
-		  fprintf(stderr,"ttcp-r: accept from %s\n", 
-			inet_ntoa(peer.sin_addr));
-		}
+                        err("setsockopt");
+            }
+            fromlen = sizeof(frominet);
+            domain = AF_INET;
+            if((fd=accept(fd, (struct sockaddr *)&frominet, &fromlen) ) < 0)
+                err("accept");
+            { struct sockaddr_in peer;
+                int peerlen = sizeof(peer);
+                if (getpeername(fd, (struct sockaddr *) &peer, &peerlen) < 0) {
+                    err("getpeername");
+                }
+                fprintf(stderr,"ttcp%s: accept from %s\n", 
+                        trans? "-t":"-r", inet_ntoa(peer.sin_addr));
+            }
 	    }
 	}
 	prep_timer();
