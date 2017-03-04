@@ -362,6 +362,7 @@ main(int argc, char *argv[])
 #else
             listen(fd,0);   /* allow a queue of 0 */
 #endif
+            mes("listen");
             if(options)  {
 #if defined(BSD42)
                 if( setsockopt(fd, SOL_SOCKET, options, 0, 0) < 0)
