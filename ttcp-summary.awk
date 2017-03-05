@@ -1,10 +1,23 @@
-# make sure a field in input looks correct
-function get(i, expected) {
-    if (a[i] != expected) {
-        print "expected " expected "; got " a[i] " in: " $0
+BEGIN {
+    FS = "[=:, ]+"
+}
+
+# make sure the name of a field in input looks correct, then return value
+function get(name, nwhere, vwhere) {
+    if ($nwhere != name) {
+        print "expected " name "; got " $nwhere " in: " $0
+        exit 1
+    }
+    return $vwhere
+}
+
+function nfields(expected) {
+    if (NF != expected) {
+        print "bad number of fields (" NF " s/b " expected ") in: " $0
         exit 1
     }
 }
+        
 
 # look at, e.g., "KB/s" to determine actual number of bytes
 function nbytes(str) {
@@ -22,41 +35,37 @@ function nbytes(str) {
     return val
 }
 
-$2 ~ /buflen=.*/ {
-    n = split($0, a, "[=:, ]+")
-    if (n != 12) {
-        print "bad number of fields (" n " s/b 9) in: " $0
-        exit 1
-    }
-    get(2, "buflen");
-    buflen = a[3]
-    get(4, "nbuf");
-    nbuf = a[5]
-    get(6, "align");
-    align = a[7]
-    get(8, "port");
-    port = a[9]
-    proto = a[10]
-    remote = a[12]
+$2 ~ /buflen/ {
+    nfields(12)
+    ttcp = $1                   # "ttcp-t" or "ttcp-r"
+    buflen = get("buflen", 2, 3)
+    nbuf = get("nbuf", 4, 5)
+    align = get("align", 6, 7)
+    port = get("port", 8, 9)
+    proto = $10                 # no tag
+    remote = get("->", 11, 12)
 }
 
 $3 ~ /bytes/ && $4 ~ /in/ {
-    bytes = $2
-    realsecs = $5
-    bps = $9 * nbytes($10)
+    nfields(10)
+    bytes = get("bytes", 3, 2)
+    realsecs = get("real", 6, 5)
+    bps = get("seconds", 7, 8) * nbytes(get("+++", 10, 9))
     kbps = bps/1000
-    rrealsecs = (bytes/bps) # we get better accuracy from this, imputed
+    rrealsecs = (bytes/bps) # we seem to get better accuracy from this, imputed
 }
 
 $3 ~ /I\/O/ && $4 ~ /calls/ {
-    ioc = $2
-    mspc = $7
-    cps = $10
+    nfields(8)
+    ioc = get("I/O", 3, 2)
+    mspc = get("msec/call", 5, 6)
+    cps = get("calls/sec", 7, 8)
     rcpusecs = ioc/cps
 }
 
 END {
-    print "buflen", buflen, "nbuf", nbuf, "align", align, "port", port, \
+    print "ttcp", ttcp, \
+        "buflen", buflen, "nbuf", nbuf, "align", align, "port", port,   \
         "proto", proto, "remote", remote, \
         "bytes", bytes, "realsecs", realsecs, "kbps", kbps, "rrealsecs", rrealsecs, \
         "ioc", ioc, "mspc", mspc, "cps", cps, "rcpusecs", rcpusecs
