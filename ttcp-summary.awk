@@ -42,26 +42,22 @@ $2 ~ /buflen=.*/ {
 
 $3 ~ /bytes/ && $4 ~ /in/ {
     bytes = $2
-    bsecs = $5
+    realsecs = $5
     bps = $9 * nbytes($10)
     kbps = bps/1000
-    rbsecs = (bytes/bps) # we get better accuracy from this, imputed
-    if (debug) {
-        print "bytes", bytes, "bsecs", bsecs, "kbps", kbps, \
-            "rbsecs", rbsecs, "nbytes", nbytes($10)
-    }
+    rrealsecs = (bytes/bps) # we get better accuracy from this, imputed
 }
 
 $3 ~ /I\/O/ && $4 ~ /calls/ {
     ioc = $2
     mspc = $7
     cps = $10
-    rcsecs = ioc/cps
+    rcpusecs = ioc/cps
 }
 
 END {
     print "buflen", buflen, "nbuf", nbuf, "align", align, "port", port, \
         "proto", proto, "remote", remote, \
-        "bytes", bytes, "bsecs", bsecs, "kbps", kbps, "rbsecs", rbsecs, \
-        "ioc", ioc, "mspc", mspc, "cps", cps, "rcsecs", rcsecs
+        "bytes", bytes, "realsecs", realsecs, "kbps", kbps, "rrealsecs", rrealsecs, \
+        "ioc", ioc, "mspc", mspc, "cps", cps, "rcpusecs", rcpusecs
 }
