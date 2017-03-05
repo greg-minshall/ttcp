@@ -24,7 +24,7 @@ function nbytes(str) {
 
 $2 ~ /buflen=.*/ {
     n = split($0, a, "[=:, ]+")
-    if (n != 13) {
+    if (n != 12) {
         print "bad number of fields (" n " s/b 9) in: " $0
         exit 1
     }
@@ -37,7 +37,7 @@ $2 ~ /buflen=.*/ {
     get(8, "port");
     port = a[9]
     proto = a[10]
-    remote = a[13]
+    remote = a[12]
 }
 
 $3 ~ /bytes/ && $4 ~ /in/ {
