@@ -24,24 +24,31 @@ function nbytes(str) {
 
 $2 ~ /buflen=.*/ {
     n = split($0, a, "[=:, ]+")
-    if (n != 9) {
+    if (n != 13) {
         print "bad number of fields (" n " s/b 9) in: " $0
         exit 1
     }
     get(2, "buflen");
+    buflen = a[3]
     get(4, "nbuf");
+    nbuf = a[5]
     get(6, "align");
+    align = a[7]
     get(8, "port");
+    port = a[9]
+    proto = a[10]
+    remote = a[13]
 }
 
 $3 ~ /bytes/ && $4 ~ /in/ {
     bytes = $2
-    rsecs = $5
+    bsecs = $5
     bps = $9 * nbytes($10)
-    rrsecs = (bytes/bps)/1000.0
+    kbps = bps/1000
+    rbsecs = (bytes/bps) # we get better accuracy from this, imputed
     if (debug) {
-        print "bytes", bytes, "rsecs", rsecs, "kbs", kbs, "rrsecs", \
-            rrsecs, "nbytes", nbytes($10)
+        print "bytes", bytes, "bsecs", bsecs, "kbps", kbps, \
+            "rbsecs", rbsecs, "nbytes", nbytes($10)
     }
 }
 
@@ -49,7 +56,12 @@ $3 ~ /I\/O/ && $4 ~ /calls/ {
     ioc = $2
     mspc = $7
     cps = $10
+    rcsecs = ioc/cps
 }
 
 END {
-    print 
+    print "buflen", buflen, "nbuf", nbuf, "align", align, "port", port, \
+        "proto", proto, "remote", remote, \
+        "bytes", bytes, "bsecs", bsecs, "kbps", kbps, "rbsecs", rbsecs, \
+        "ioc", ioc, "mspc", mspc, "cps", cps, "rcsecs", rcsecs
+}
