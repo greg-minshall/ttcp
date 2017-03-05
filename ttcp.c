@@ -293,7 +293,6 @@ main(int argc, char *argv[])
  		buflen, nbuf, bufalign, bufoffset, port);
  	    if (sockbufsize)
  		fprintf(stdout, ", sockbufsize=%d", sockbufsize);
- 	    fprintf(stdout, "  %s", udp?"udp":"tcp");
 	}
     if ((trans && !S_flag) || C_flag) {
         fprintf(stdout, "  %s  -> %s", udp?"udp":"tcp", host);
